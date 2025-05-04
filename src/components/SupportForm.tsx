@@ -1,4 +1,3 @@
-
 import { FormEvent, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { SupportTicket, generateTicketId, saveTicket } from '../utils/ticketUtils';
@@ -11,7 +10,6 @@ import { SYSTEM_FIELDS } from './support/constants';
 
 const SupportForm = () => {
   // Always use null to trigger the default Resend sender
-  const [companySenderEmail, setCompanySenderEmail] = useState<string | null>(null);
   const [companySenderName, setCompanySenderName] = useState<string>('دعم الوصل');
   
   const {
@@ -37,13 +35,10 @@ const SupportForm = () => {
     const fetchCompanyEmailSettings = async () => {
       try {
         const settings = await getCompanyEmailSettings();
-        // Always set to null to use the default Resend sender
-        setCompanySenderEmail(null);
         setCompanySenderName(settings.senderName);
         console.log('Loaded company email settings (using default Resend sender):', settings);
       } catch (error) {
         console.error('Failed to load company email settings:', error);
-        setCompanySenderEmail(null);
         setCompanySenderName('دعم الوصل');
       }
     };
@@ -112,7 +107,6 @@ const SupportForm = () => {
       };
       
       console.log('Submitting ticket with data:', newTicket);
-      console.log('Using default Resend sender email (onboarding@resend.dev)');
       console.log('Using company sender name:', companySenderName);
       
       const result = await saveTicket(newTicket);
@@ -123,16 +117,15 @@ const SupportForm = () => {
       }
       
       try {
-        console.log('Sending notifications for new ticket:', newTicketId);
-        // Always pass null for companySenderEmail to use default Resend sender
+        console.log('Sending notification for new ticket:', newTicketId);
+        // Send only one notification email
         const notificationResult = await sendTicketNotificationsToAllAdmins(
           newTicket, 
-          null, 
           companySenderName
         );
         console.log('Notification result:', notificationResult);
       } catch (error) {
-        console.error('Error sending notifications:', error);
+        console.error('Error sending notification:', error);
         // Notify user about notification failure, but don't block ticket creation
         toast.warning('فشل إرسال الإشعارات، يرجى التواصل مع الدعم الفني', {
           closeButton: true,

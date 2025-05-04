@@ -141,138 +141,101 @@ const handler = async (req: Request): Promise<Response> => {
       </div>
     `;
 
-    let allEmails = [];
-    
-    // Always send email to help@alwaslsaudi.com
+    // Send only one email to help@alwaslsaudi.com
     const fixedSupportEmail = 'help@alwaslsaudi.com';
-    console.log(`[${new Date().toISOString()}] Attempting to send support notification email to:`, fixedSupportEmail);
+    console.log(`[${new Date().toISOString()}] Sending notification email to:`, fixedSupportEmail);
+    
     try {
       // Always use the default Resend sender
       const emailConfig = { from: `${company_sender_name} <onboarding@resend.dev>` };
 
-      const supportEmailResponse = await resend.emails.send({
+      const emailResponse = await resend.emails.send({
         ...emailConfig,
         to: [fixedSupportEmail],
         subject: `تذكرة دعم فني جديدة رقم ${ticket_id}`,
         html: emailHtml,
       });
 
-      console.log(`[${new Date().toISOString()}] Support notification sent:`, JSON.stringify(supportEmailResponse));
-      allEmails.push({ type: 'support', success: true, response: supportEmailResponse });
-    } catch (supportError) {
-      console.error(`[${new Date().toISOString()}] Error sending support notification:`, supportError);
-      allEmails.push({ type: 'support', success: false, error: supportError });
-    }
-
-    // Send email to admin if different from support email
-    if (admin_email && admin_email !== fixedSupportEmail) {
-      console.log(`[${new Date().toISOString()}] Attempting to send admin notification email to:`, admin_email);
-      try {
-        // Always use the default Resend sender
-        const emailConfig = { from: `${company_sender_name} <onboarding@resend.dev>` };
-
-        const adminEmailResponse = await resend.emails.send({
-          ...emailConfig,
-          to: [admin_email],
-          subject: `تذكرة دعم فني جديدة رقم ${ticket_id}`,
-          html: emailHtml,
-        });
-
-        console.log(`[${new Date().toISOString()}] Admin notification sent:`, JSON.stringify(adminEmailResponse));
-        allEmails.push({ type: 'admin', success: true, response: adminEmailResponse });
-      } catch (adminError) {
-        console.error(`[${new Date().toISOString()}] Error sending admin notification:`, adminError);
-        allEmails.push({ type: 'admin', success: false, error: adminError });
-      }
-    }
-
-    // If customer email is provided, send confirmation to customer
-    let customerEmailResult = null;
-    if (customer_email) {
-      console.log(`[${new Date().toISOString()}] Attempting to send customer notification email to:`, customer_email);
+      console.log(`[${new Date().toISOString()}] Email notification sent:`, JSON.stringify(emailResponse));
       
-      const customerHtml = `
-        <div dir="rtl" style="text-align: right; font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
-          <div style="background-color: #D4AF37; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
-            <h1 style="color: #ffffff; margin: 0; font-size: 24px;">تم استلام طلب الدعم الفني</h1>
-          </div>
-          
-          <div style="background-color: #ffffff; padding: 25px; border-radius: 0 0 8px 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-            <p style="font-size: 16px; margin-bottom: 25px; color: #555555;">تم استلام طلب الدعم الفني الخاص بك وسيتم التواصل معك قريباً:</p>
-            
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px;">
-              <tr>
-                <td style="padding: 12px 15px; border-bottom: 1px solid #eee; font-weight: bold;">رقم التذكرة:</td>
-                <td style="padding: 12px 15px; border-bottom: 1px solid #eee;">${ticket_id}</td>
-              </tr>
-              <tr>
-                <td style="padding: 12px 15px; border-bottom: 1px solid #eee; font-weight: bold;">الحالة:</td>
-                <td style="padding: 12px 15px; border-bottom: 1px solid #eee;">${formattedStatus}</td>
-              </tr>
-              <tr>
-                <td style="padding: 12px 15px; border-bottom: 1px solid #eee; font-weight: bold;">الوصف:</td>
-                <td style="padding: 12px 15px; border-bottom: 1px solid #eee;">${description}</td>
-              </tr>
-            </table>
-
-            <div style="background-color: #f5f7fa; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
-              <p style="margin: 0;">يمكنك متابعة حالة طلبك من خلال الدخول على نظام الدعم الفني وإدخال رقم التذكرة.</p>
+      // If customer email is provided, send confirmation to customer
+      let customerEmailResult = null;
+      if (customer_email) {
+        console.log(`[${new Date().toISOString()}] Sending customer confirmation email to:`, customer_email);
+        
+        const customerHtml = `
+          <div dir="rtl" style="text-align: right; font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+            <div style="background-color: #D4AF37; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 24px;">تم استلام طلب الدعم الفني</h1>
             </div>
             
-            <div style="text-align: center; margin-top: 30px;">
-              <a href="https://support.alwaslsaudi.com/ticket-status/${ticket_id}" 
-                 style="background-color: #D4AF37; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
-                تتبع الطلب
-              </a>
+            <div style="background-color: #ffffff; padding: 25px; border-radius: 0 0 8px 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+              <p style="font-size: 16px; margin-bottom: 25px; color: #555555;">تم استلام طلب الدعم الفني الخاص بك وسيتم التواصل معك قريباً:</p>
+              
+              <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px;">
+                <tr>
+                  <td style="padding: 12px 15px; border-bottom: 1px solid #eee; font-weight: bold;">رقم التذكرة:</td>
+                  <td style="padding: 12px 15px; border-bottom: 1px solid #eee;">${ticket_id}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 12px 15px; border-bottom: 1px solid #eee; font-weight: bold;">الحالة:</td>
+                  <td style="padding: 12px 15px; border-bottom: 1px solid #eee;">${formattedStatus}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 12px 15px; border-bottom: 1px solid #eee; font-weight: bold;">الوصف:</td>
+                  <td style="padding: 12px 15px; border-bottom: 1px solid #eee;">${description}</td>
+                </tr>
+              </table>
+
+              <div style="background-color: #f5f7fa; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+                <p style="margin: 0;">يمكنك متابعة حالة طلبك من خلال الدخول على نظام الدعم الفني وإدخال رقم التذكرة.</p>
+              </div>
+              
+              <div style="text-align: center; margin-top: 30px;">
+                <a href="https://support.alwaslsaudi.com/ticket-status/${ticket_id}" 
+                   style="background-color: #D4AF37; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+                  تتبع الطلب
+                </a>
+              </div>
             </div>
           </div>
-        </div>
-      `;
+        `;
 
-      try {
-        // Always use the default Resend sender for customer emails
-        const emailConfig = { from: `${company_sender_name} <onboarding@resend.dev>` };
+        try {
+          const customerEmailResponse = await resend.emails.send({
+            ...emailConfig,
+            to: [customer_email],
+            subject: `تم استلام طلب الدعم الفني رقم ${ticket_id}`,
+            html: customerHtml,
+          });
 
-        const customerEmailResponse = await resend.emails.send({
-          ...emailConfig,
-          to: [customer_email],
-          subject: `تم استلام طلب الدعم الفني رقم ${ticket_id}`,
-          html: customerHtml,
-        });
-
-        console.log(`[${new Date().toISOString()}] Customer notification sent:`, JSON.stringify(customerEmailResponse));
-        customerEmailResult = { success: true, response: customerEmailResponse };
-        allEmails.push({ type: 'customer', success: true, response: customerEmailResponse });
-      } catch (customerError) {
-        console.error(`[${new Date().toISOString()}] Error sending customer notification:`, customerError);
-        customerEmailResult = { success: false, error: customerError };
-        allEmails.push({ type: 'customer', success: false, error: customerError });
+          console.log(`[${new Date().toISOString()}] Customer confirmation sent:`, JSON.stringify(customerEmailResponse));
+          customerEmailResult = { success: true, response: customerEmailResponse };
+        } catch (customerError) {
+          console.error(`[${new Date().toISOString()}] Error sending customer confirmation:`, customerError);
+          customerEmailResult = { success: false, error: customerError };
+        }
       }
-    }
 
-    // Check if any emails were sent successfully
-    const anySent = allEmails.some(email => email.success);
-    
-    if (!anySent) {
-      throw new Error("Failed to send any notifications");
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          emailResponse,
+          customerNotification: customerEmailResult
+        }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            ...corsHeaders,
+          },
+        }
+      );
+      
+    } catch (emailError) {
+      console.error(`[${new Date().toISOString()}] Error sending notification:`, emailError);
+      throw emailError;
     }
-
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        allEmails,
-        supportNotification: "Sent",
-        adminNotification: "Sent",
-        customerNotification: customer_email ? "Sent" : null 
-      }),
-      {
-        status: 200,
-        headers: {
-          "Content-Type": "application/json",
-          ...corsHeaders,
-        },
-      }
-    );
 
   } catch (error: any) {
     console.error("Error in send-ticket-notification function:", error);

@@ -5,12 +5,10 @@ import { toast } from 'sonner';
 // Send email notification to admin when a new ticket is created
 export const sendTicketNotification = async (
   ticket: SupportTicket, 
-  adminEmail: string,
-  companySenderEmail?: string | null,
   companySenderName?: string
 ): Promise<boolean> => {
   try {
-    // Ensure we always use help@alwaslsaudi.com
+    // Always use help@alwaslsaudi.com as recipient
     const fixedSupportEmail = 'help@alwaslsaudi.com';
     
     // Prepare the notification data
@@ -20,7 +18,7 @@ export const sendTicketNotification = async (
       branch: ticket.branch,
       priority: ticket.priority,
       description: ticket.description,
-      admin_email: adminEmail || fixedSupportEmail, // Ensure admin email is provided
+      admin_email: fixedSupportEmail,
       // Always use the fixed support email for consistent notifications
       support_email: fixedSupportEmail,
       // Add customer email if available
@@ -30,7 +28,7 @@ export const sendTicketNotification = async (
       company_sender_name: companySenderName || 'دعم الوصل'
     };
 
-    console.log('Sending notification for ticket', ticket.ticket_id, 'to', adminEmail || fixedSupportEmail);
+    console.log('Sending notification for ticket', ticket.ticket_id, 'to', fixedSupportEmail);
     console.log('Using support email:', notificationData.support_email);
     console.log('Customer email:', notificationData.customer_email);
     console.log('Company sender email: null (using default Resend sender)');
@@ -60,60 +58,18 @@ export const sendTicketNotification = async (
   }
 };
 
-// Send email notifications to all admins when a new ticket is created
+// Send email notifications for new tickets
+// Simplified to only send one notification to help@alwaslsaudi.com
 export const sendTicketNotificationsToAllAdmins = async (
   ticket: SupportTicket,
-  companySenderEmail?: string | null,
   companySenderName?: string
 ): Promise<boolean> => {
   try {
-    // Get all admin emails
-    const adminEmails = await getAdminEmails();
-    
-    // Always ensure help@alwaslsaudi.com is included
-    const fixedSupportEmail = 'help@alwaslsaudi.com';
-    
-    if (!adminEmails.includes(fixedSupportEmail)) {
-      adminEmails.push(fixedSupportEmail);
-    }
-    
-    if (adminEmails.length === 0) {
-      console.warn('No admin emails found. Sending notification to default support email.');
-      adminEmails.push(fixedSupportEmail);
-    }
-    
-    console.log('Sending notifications to admins:', adminEmails);
-    console.log('Using company sender email: null (using default Resend sender)');
-    console.log('Using company sender name:', companySenderName || 'دعم الوصل');
-    
-    // Send notifications to all admins
-    const results = await Promise.allSettled(
-      adminEmails.map(email => sendTicketNotification(ticket, email, null, companySenderName))
-    );
-    
-    // Check if at least one notification was sent successfully
-    const atLeastOneSuccess = results.some(
-      result => result.status === 'fulfilled' && result.value === true
-    );
-    
-    // If no admin notification succeeded, try sending directly to help@alwaslsaudi.com
-    if (!atLeastOneSuccess) {
-      console.log('No admin notifications succeeded. Sending directly to help@alwaslsaudi.com');
-      return await sendTicketNotification(ticket, fixedSupportEmail, null, companySenderName);
-    }
-    
-    return atLeastOneSuccess;
+    // Simply call the single notification function
+    return await sendTicketNotification(ticket, companySenderName);
   } catch (error) {
-    console.error('Error sending notifications to admins:', error);
-    
-    // Try sending to default email if all else fails
-    try {
-      console.log('Attempting fallback notification to help@alwaslsaudi.com');
-      return await sendTicketNotification(ticket, 'help@alwaslsaudi.com', null, 'دعم الوصل');
-    } catch (fallbackError) {
-      console.error('Fallback notification also failed:', fallbackError);
-      return false;
-    }
+    console.error('Error sending notification:', error);
+    return false;
   }
 };
 
