@@ -3,7 +3,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
 
 // استخدم مفتاح API المخزن في متغيرات البيئة
-const resendApiKey = Deno.env.get("RESEND_API_KEY");
+const resendApiKey = "re_RqWw6zr2_Amr7mwGUQaxaeiK1dNdTnv2N";
 if (!resendApiKey) {
   console.error("RESEND_API_KEY environment variable is not set");
 }
