@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
 
@@ -127,11 +128,15 @@ const handler = async (req: Request): Promise<Response> => {
           </table>
 
           <div style="text-align: center; margin-top: 30px;">
-            <a href="https://support.alwaslsaudi.com/admin/tickets/${ticket_id}" 
+            <a href="https://support.alwaslsaudi.com/admin/login?ticket=${ticket_id}" 
                style="background-color: #D4AF37; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
               مشاهدة التذكرة
             </a>
           </div>
+          
+          <p style="font-size: 14px; color: #888; margin-top: 20px; text-align: center;">
+            سيتم توجيهك لصفحة تسجيل الدخول أولاً
+          </p>
         </div>
       </div>
     `;

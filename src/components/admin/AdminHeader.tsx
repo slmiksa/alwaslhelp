@@ -13,7 +13,8 @@ const AdminHeader = () => {
   const {
     logout,
     hasPermission,
-    currentAdmin
+    currentAdmin,
+    isAuthenticated
   } = useAdminAuth();
   const navigate = useNavigate();
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
@@ -22,9 +23,11 @@ const AdminHeader = () => {
     theme,
     toggleTheme
   } = useTheme();
+  
   useEffect(() => {
     fetchSiteSettings();
   }, []);
+  
   const fetchSiteSettings = async () => {
     try {
       const {
@@ -51,10 +54,22 @@ const AdminHeader = () => {
       setSettingsInitialized(true);
     }
   };
+  
   const handleLogout = () => {
     logout();
     navigate('/admin');
   };
+
+  // Check for ticket parameter in URL to redirect to ticket details
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ticketId = params.get('ticket');
+    
+    // If there's a ticket ID in the URL and user is authenticated, redirect to ticket details
+    if (ticketId && isAuthenticated) {
+      navigate(`/admin/tickets/${ticketId}`);
+    }
+  }, [navigate, isAuthenticated]);
 
   // Don't render until settings are initialized
   if (!settingsInitialized) {
