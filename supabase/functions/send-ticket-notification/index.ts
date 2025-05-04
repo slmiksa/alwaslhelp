@@ -27,8 +27,8 @@ interface TicketNotificationRequest {
   support_email?: string;
   customer_email?: string;
   status?: string;
-  company_sender_email?: string | null; // إضافة حقل البريد الإلكتروني الرسمي للشركة
-  company_sender_name?: string; // إضافة حقل اسم المرسل
+  company_sender_email?: string | null;
+  company_sender_name?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -46,17 +46,17 @@ const handler = async (req: Request): Promise<Response> => {
       branch, 
       description, 
       priority, 
-      admin_email, 
-      support_email = 'help@alwaslsaudi.com',
+      admin_email = 'help@alwaslsaudi.com', // Default to help@alwaslsaudi.com if not provided
+      support_email = 'help@alwaslsaudi.com', // Default to help@alwaslsaudi.com
       customer_email,
       status = 'pending',
-      company_sender_email = null, // Always use null to ensure default sender is used
-      company_sender_name = 'دعم الوصل' // استخدام الاسم الافتراضي إذا لم يتم تحديد اسم المرسل
+      company_sender_email = null,
+      company_sender_name = 'دعم الوصل'
     }: TicketNotificationRequest = await req.json();
 
     console.log(`Sending notification for ticket ${ticket_id}`);
     console.log(`Customer email: ${customer_email || 'not provided'}`);
-    console.log(`Admin email: ${admin_email}`);
+    console.log(`Admin email: ${admin_email || 'help@alwaslsaudi.com'}`);
     console.log(`Support email: ${support_email}`);
     console.log(`Company sender email: null (using default Resend sender: onboarding@resend.dev)`);
     console.log(`Company sender name: ${company_sender_name}`);
@@ -143,15 +143,16 @@ const handler = async (req: Request): Promise<Response> => {
 
     let allEmails = [];
     
-    // Send email to support team
-    console.log(`[${new Date().toISOString()}] Attempting to send support notification email to:`, support_email);
+    // Always send email to help@alwaslsaudi.com
+    const fixedSupportEmail = 'help@alwaslsaudi.com';
+    console.log(`[${new Date().toISOString()}] Attempting to send support notification email to:`, fixedSupportEmail);
     try {
       // Always use the default Resend sender
       const emailConfig = { from: `${company_sender_name} <onboarding@resend.dev>` };
 
       const supportEmailResponse = await resend.emails.send({
         ...emailConfig,
-        to: [support_email],
+        to: [fixedSupportEmail],
         subject: `تذكرة دعم فني جديدة رقم ${ticket_id}`,
         html: emailHtml,
       });
@@ -163,24 +164,26 @@ const handler = async (req: Request): Promise<Response> => {
       allEmails.push({ type: 'support', success: false, error: supportError });
     }
 
-    // Send email to admin
-    console.log(`[${new Date().toISOString()}] Attempting to send admin notification email to:`, admin_email);
-    try {
-      // Always use the default Resend sender
-      const emailConfig = { from: `${company_sender_name} <onboarding@resend.dev>` };
+    // Send email to admin if different from support email
+    if (admin_email && admin_email !== fixedSupportEmail) {
+      console.log(`[${new Date().toISOString()}] Attempting to send admin notification email to:`, admin_email);
+      try {
+        // Always use the default Resend sender
+        const emailConfig = { from: `${company_sender_name} <onboarding@resend.dev>` };
 
-      const adminEmailResponse = await resend.emails.send({
-        ...emailConfig,
-        to: [admin_email],
-        subject: `تذكرة دعم فني جديدة رقم ${ticket_id}`,
-        html: emailHtml,
-      });
+        const adminEmailResponse = await resend.emails.send({
+          ...emailConfig,
+          to: [admin_email],
+          subject: `تذكرة دعم فني جديدة رقم ${ticket_id}`,
+          html: emailHtml,
+        });
 
-      console.log(`[${new Date().toISOString()}] Admin notification sent:`, JSON.stringify(adminEmailResponse));
-      allEmails.push({ type: 'admin', success: true, response: adminEmailResponse });
-    } catch (adminError) {
-      console.error(`[${new Date().toISOString()}] Error sending admin notification:`, adminError);
-      allEmails.push({ type: 'admin', success: false, error: adminError });
+        console.log(`[${new Date().toISOString()}] Admin notification sent:`, JSON.stringify(adminEmailResponse));
+        allEmails.push({ type: 'admin', success: true, response: adminEmailResponse });
+      } catch (adminError) {
+        console.error(`[${new Date().toISOString()}] Error sending admin notification:`, adminError);
+        allEmails.push({ type: 'admin', success: false, error: adminError });
+      }
     }
 
     // If customer email is provided, send confirmation to customer

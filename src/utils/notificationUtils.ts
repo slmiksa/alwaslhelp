@@ -1,4 +1,3 @@
-
 import { supabase, PriorityType } from '@/integrations/supabase/client';
 import { SupportTicket } from './ticketUtils';
 import { toast } from 'sonner';
@@ -11,6 +10,9 @@ export const sendTicketNotification = async (
   companySenderName?: string
 ): Promise<boolean> => {
   try {
+    // Ensure we always use help@alwaslsaudi.com
+    const fixedSupportEmail = 'help@alwaslsaudi.com';
+    
     // Prepare the notification data
     const notificationData = {
       ticket_id: ticket.ticket_id,
@@ -18,9 +20,9 @@ export const sendTicketNotification = async (
       branch: ticket.branch,
       priority: ticket.priority,
       description: ticket.description,
-      admin_email: adminEmail,
+      admin_email: adminEmail || fixedSupportEmail, // Ensure admin email is provided
       // Always use the fixed support email for consistent notifications
-      support_email: 'help@alwaslsaudi.com',
+      support_email: fixedSupportEmail,
       // Add customer email if available
       customer_email: ticket.customer_email || null,
       // Always set to null to use default Resend sender (onboarding@resend.dev)
@@ -28,7 +30,7 @@ export const sendTicketNotification = async (
       company_sender_name: companySenderName || 'دعم الوصل'
     };
 
-    console.log('Sending notification for ticket', ticket.ticket_id, 'to', adminEmail);
+    console.log('Sending notification for ticket', ticket.ticket_id, 'to', adminEmail || fixedSupportEmail);
     console.log('Using support email:', notificationData.support_email);
     console.log('Customer email:', notificationData.customer_email);
     console.log('Company sender email: null (using default Resend sender)');
@@ -68,9 +70,16 @@ export const sendTicketNotificationsToAllAdmins = async (
     // Get all admin emails
     const adminEmails = await getAdminEmails();
     
+    // Always ensure help@alwaslsaudi.com is included
+    const fixedSupportEmail = 'help@alwaslsaudi.com';
+    
+    if (!adminEmails.includes(fixedSupportEmail)) {
+      adminEmails.push(fixedSupportEmail);
+    }
+    
     if (adminEmails.length === 0) {
-      console.warn('No admin emails found. Skipping notifications.');
-      return false;
+      console.warn('No admin emails found. Sending notification to default support email.');
+      adminEmails.push(fixedSupportEmail);
     }
     
     console.log('Sending notifications to admins:', adminEmails);
@@ -87,10 +96,24 @@ export const sendTicketNotificationsToAllAdmins = async (
       result => result.status === 'fulfilled' && result.value === true
     );
     
+    // If no admin notification succeeded, try sending directly to help@alwaslsaudi.com
+    if (!atLeastOneSuccess) {
+      console.log('No admin notifications succeeded. Sending directly to help@alwaslsaudi.com');
+      return await sendTicketNotification(ticket, fixedSupportEmail, null, companySenderName);
+    }
+    
     return atLeastOneSuccess;
   } catch (error) {
     console.error('Error sending notifications to admins:', error);
-    return false;
+    
+    // Try sending to default email if all else fails
+    try {
+      console.log('Attempting fallback notification to help@alwaslsaudi.com');
+      return await sendTicketNotification(ticket, 'help@alwaslsaudi.com', null, 'دعم الوصل');
+    } catch (fallbackError) {
+      console.error('Fallback notification also failed:', fallbackError);
+      return false;
+    }
   }
 };
 
@@ -113,10 +136,16 @@ export const getAdminEmails = async (): Promise<string[]> => {
       .filter(Boolean);
     
     console.log('Found admin emails:', emails);
+    
+    // Always include help@alwaslsaudi.com
+    if (!emails.includes('help@alwaslsaudi.com')) {
+      emails.push('help@alwaslsaudi.com');
+    }
+    
     return emails;
   } catch (error) {
     console.error('Error fetching admin emails:', error);
-    return [];
+    return ['help@alwaslsaudi.com']; // Return default email
   }
 };
 
