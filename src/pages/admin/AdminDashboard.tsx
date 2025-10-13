@@ -60,6 +60,7 @@ const AdminDashboard = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   useEffect(() => {
     if (isAuthenticated) {
       fetchTickets();
@@ -99,9 +100,12 @@ const AdminDashboard = () => {
       } catch (e) {
         console.log('Error playing notification sound:', e);
       }
-      setTickets(prevTickets => {
-        return [newTicket, ...prevTickets];
-      });
+      // مع التقسيم على الخادم: أعد تحميل الصفحة الأولى أو حدّث العدّاد فقط
+      if (currentPage === 1) {
+        fetchTickets();
+      } else {
+        setTotalCount((c) => c + 1);
+      }
     }).subscribe();
     return () => {
       supabase.removeChannel(channel);
@@ -110,16 +114,29 @@ const AdminDashboard = () => {
   const fetchTickets = async () => {
     try {
       setLoading(true);
-      const {
-        data,
-        error
-      } = await supabase.from('tickets').select('*').order('created_at', {
-        ascending: false
-      });
-      if (error) {
-        throw error;
+      const start = (currentPage - 1) * ITEMS_PER_PAGE;
+      const end = start + ITEMS_PER_PAGE - 1; // supabase range is inclusive
+
+      let query = supabase
+        .from('tickets')
+        .select('id, ticket_id, employee_id, branch, priority, status, created_at', { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .range(start, end);
+
+      if (activeFilter !== 'all') {
+        query = query.eq('status', activeFilter);
       }
+
+      if (searchQuery.trim()) {
+        const q = `%${searchQuery.trim()}%`;
+        query = query.or(`ticket_id.ilike.${q},employee_id.ilike.${q},branch.ilike.${q},description.ilike.${q}`);
+      }
+
+      const { data, error, count } = await query;
+      if (error) throw error;
+
       setTickets(data || []);
+      setTotalCount(count || 0);
     } catch (error) {
       console.error('Error fetching tickets:', error);
       toast.error('فشل في تحميل التذاكر');
@@ -127,30 +144,21 @@ const AdminDashboard = () => {
       setLoading(false);
     }
   };
-  const filterTickets = () => {
-    let filtered = [...tickets];
-    if (activeFilter !== 'all') {
-      filtered = filtered.filter(ticket => ticket.status === activeFilter);
-    }
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(ticket => ticket.ticket_id.toLowerCase().includes(query) || ticket.employee_id.toLowerCase().includes(query) || ticket.branch.toLowerCase().includes(query) || ticket.description.toLowerCase().includes(query));
-    }
-    return filtered;
-  };
+  // تم إزالة الفلترة على الواجهة؛ أصبحنا نستخدم الاستعلام المصفح من Supabase داخل fetchTickets
 
-  const getPaginatedTickets = () => {
-    const filtered = filterTickets();
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    const endIndex = startIndex + ITEMS_PER_PAGE;
-    return filtered.slice(startIndex, endIndex);
-  };
+  // لم نعد نستخدم تقسيم الصفحات على الجانب الأمامي؛ المتغير tickets يحتوي بيانات الصفحة الحالية من الخادم
 
-  const totalPages = Math.ceil(filterTickets().length / ITEMS_PER_PAGE);
+  const totalPages = Math.max(1, Math.ceil((totalCount || 0) / ITEMS_PER_PAGE));
 
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, activeFilter]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchTickets();
+    }
+  }, [isAuthenticated, currentPage, activeFilter, searchQuery]);
   const handleViewTicket = ticketId => {
     navigate(`/admin/tickets/${ticketId}`);
   };
@@ -242,47 +250,57 @@ const AdminDashboard = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {getPaginatedTickets().length > 0 ? getPaginatedTickets().map(ticket => <TableRow key={ticket.id} className="hover:bg-gray-50 border-b border-gray-200 dark:border-gray-700 dark:hover:bg-gray-700">
-                          <TableCell className="font-medium text-right py-4 dark:text-gray-200">{ticket.ticket_id}</TableCell>
-                          <TableCell className="text-right py-4 dark:text-gray-200">{ticket.employee_id}</TableCell>
-                          <TableCell className="text-right py-4 dark:text-gray-200">{ticket.branch}</TableCell>
-                          <TableCell className="text-right py-4">
-                            {getPriorityDisplay(ticket.priority)}
-                          </TableCell>
-                          <TableCell className="text-right py-4">
-                            <Badge className={`font-medium px-3 py-1 rounded-md text-sm ${statusColorMap[ticket.status] || 'bg-gray-100'}`}>
-                              {statusLabels[ticket.status] || ticket.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right py-4 dark:text-gray-200">
-                            {new Date(ticket.created_at).toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'numeric',
-                      day: 'numeric'
-                    })}
-                          </TableCell>
-                          <TableCell className="py-4 flex items-center gap-2">
-                            <Button size="sm" onClick={() => handleViewTicket(ticket.ticket_id)} className="bg-company hover:bg-company-dark">
-                              عرض التفاصيل
-                            </Button>
-                            
-                            {canDeleteTickets && <Button size="sm" variant="destructive" onClick={() => handleDeleteTicket(ticket.ticket_id)} title="حذف التذكرة" className="px-2">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>}
-                          </TableCell>
-                        </TableRow>) : <TableRow>
-                        <TableCell colSpan={7} className="text-center h-32">
-                          {searchQuery ? <p className="text-lg text-gray-500">لا توجد تذاكر تطابق معايير البحث</p> : <p className="text-lg text-gray-500">لا توجد تذاكر {activeFilter !== 'all' ? `بحالة ${statusLabels[activeFilter]}` : ''}</p>}
-                        </TableCell>
-                      </TableRow>}
+                    {tickets.length > 0 ? tickets.map(ticket => (
+                          <TableRow key={ticket.id} className="hover:bg-gray-50 border-b border-gray-200 dark:border-gray-700 dark:hover:bg-gray-700">
+                            <TableCell className="font-medium text-right py-4 dark:text-gray-200">{ticket.ticket_id}</TableCell>
+                            <TableCell className="text-right py-4 dark:text-gray-200">{ticket.employee_id}</TableCell>
+                            <TableCell className="text-right py-4 dark:text-gray-200">{ticket.branch}</TableCell>
+                            <TableCell className="text-right py-4">
+                              {getPriorityDisplay(ticket.priority)}
+                            </TableCell>
+                            <TableCell className="text-right py-4">
+                              <Badge className={`font-medium px-3 py-1 rounded-md text-sm ${statusColorMap[ticket.status] || 'bg-gray-100'}`}>
+                                {statusLabels[ticket.status] || ticket.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right py-4 dark:text-gray-200">
+                              {new Date(ticket.created_at).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'numeric',
+                                day: 'numeric'
+                              })}
+                            </TableCell>
+                            <TableCell className="py-4 flex items-center gap-2">
+                              <Button size="sm" onClick={() => handleViewTicket(ticket.ticket_id)} className="bg-company hover:bg-company-dark">
+                                عرض التفاصيل
+                              </Button>
+                              
+                              {canDeleteTickets && (
+                                <Button size="sm" variant="destructive" onClick={() => handleDeleteTicket(ticket.ticket_id)} title="حذف التذكرة" className="px-2">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        )) : (
+                          <TableRow>
+                            <TableCell colSpan={7} className="text-center h-32">
+                              {searchQuery ? (
+                                <p className="text-lg text-gray-500">لا توجد تذاكر تطابق معايير البحث</p>
+                              ) : (
+                                <p className="text-lg text-gray-500">لا توجد تذاكر {activeFilter !== 'all' ? `بحالة ${statusLabels[activeFilter]}` : ''}</p>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        )}
                   </TableBody>
                 </Table>
               </div>}
             
-            {!loading && filterTickets().length > 0 && (
+            {!loading && totalCount > 0 && (
               <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="text-sm text-gray-500">
-                  عرض {((currentPage - 1) * ITEMS_PER_PAGE) + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, filterTickets().length)} من {filterTickets().length} تذكرة
+                  عرض {totalCount === 0 ? 0 : ((currentPage - 1) * ITEMS_PER_PAGE) + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, totalCount)} من {totalCount} تذكرة
                 </div>
                 
                 {totalPages > 1 && (
