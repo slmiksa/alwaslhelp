@@ -20,6 +20,8 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+
+const ITEMS_PER_PAGE = 30;
 const statusColorMap = {
   pending: 'bg-amber-100 text-amber-800 border border-amber-200 hover:bg-amber-200',
   open: 'bg-blue-100 text-blue-800 border border-blue-200 hover:bg-blue-200',
@@ -50,16 +52,14 @@ const priorityLabels = {
   normal: 'عادية'
 };
 const AdminDashboard = () => {
+  const navigate = useNavigate();
+  const { isAuthenticated, hasPermission } = useAdminAuth();
+  
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
-  const navigate = useNavigate();
-  const ITEMS_PER_PAGE = 30;
-  const {
-    isAuthenticated
-  } = useAdminAuth();
   useEffect(() => {
     if (isAuthenticated) {
       fetchTickets();
@@ -178,9 +178,7 @@ const AdminDashboard = () => {
       }
     }
   };
-  const {
-    hasPermission
-  } = useAdminAuth();
+  
   const canDeleteTickets = hasPermission('delete_tickets');
   return <div className="min-h-screen bg-white">
       <AdminHeader />
