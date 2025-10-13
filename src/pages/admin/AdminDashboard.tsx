@@ -12,6 +12,14 @@ import { Search, X, Flag, AlertTriangle, CircleCheck, Bell, Trash2 } from 'lucid
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAdminAuth } from '@/contexts/AdminAuthContext';
 import { deleteTicket } from '@/utils/ticketUtils';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 const statusColorMap = {
   pending: 'bg-amber-100 text-amber-800 border border-amber-200 hover:bg-amber-200',
   open: 'bg-blue-100 text-blue-800 border border-blue-200 hover:bg-blue-200',
@@ -46,7 +54,9 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
   const navigate = useNavigate();
+  const ITEMS_PER_PAGE = 30;
   const {
     isAuthenticated
   } = useAdminAuth();
@@ -128,6 +138,19 @@ const AdminDashboard = () => {
     }
     return filtered;
   };
+
+  const getPaginatedTickets = () => {
+    const filtered = filterTickets();
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return filtered.slice(startIndex, endIndex);
+  };
+
+  const totalPages = Math.ceil(filterTickets().length / ITEMS_PER_PAGE);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, activeFilter]);
   const handleViewTicket = ticketId => {
     navigate(`/admin/tickets/${ticketId}`);
   };
@@ -221,7 +244,7 @@ const AdminDashboard = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filterTickets().length > 0 ? filterTickets().map(ticket => <TableRow key={ticket.id} className="hover:bg-gray-50 border-b border-gray-200 dark:border-gray-700 dark:hover:bg-gray-700">
+                    {getPaginatedTickets().length > 0 ? getPaginatedTickets().map(ticket => <TableRow key={ticket.id} className="hover:bg-gray-50 border-b border-gray-200 dark:border-gray-700 dark:hover:bg-gray-700">
                           <TableCell className="font-medium text-right py-4 dark:text-gray-200">{ticket.ticket_id}</TableCell>
                           <TableCell className="text-right py-4 dark:text-gray-200">{ticket.employee_id}</TableCell>
                           <TableCell className="text-right py-4 dark:text-gray-200">{ticket.branch}</TableCell>
@@ -258,11 +281,62 @@ const AdminDashboard = () => {
                 </Table>
               </div>}
             
-            {!loading && filterTickets().length > 0 && <div className="mt-4 text-left">
-                <p className="text-sm text-gray-500">
-                  عدد التذاكر: {filterTickets().length}
-                </p>
-              </div>}
+            {!loading && filterTickets().length > 0 && (
+              <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="text-sm text-gray-500">
+                  عرض {((currentPage - 1) * ITEMS_PER_PAGE) + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, filterTickets().length)} من {filterTickets().length} تذكرة
+                </div>
+                
+                {totalPages > 1 && (
+                  <Pagination dir="rtl">
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious 
+                          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                          className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                        >
+                          السابق
+                        </PaginationPrevious>
+                      </PaginationItem>
+                      
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum;
+                        if (totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i;
+                        } else {
+                          pageNum = currentPage - 2 + i;
+                        }
+                        
+                        return (
+                          <PaginationItem key={pageNum}>
+                            <PaginationLink
+                              onClick={() => setCurrentPage(pageNum)}
+                              isActive={currentPage === pageNum}
+                              className="cursor-pointer"
+                            >
+                              {pageNum}
+                            </PaginationLink>
+                          </PaginationItem>
+                        );
+                      })}
+                      
+                      <PaginationItem>
+                        <PaginationNext 
+                          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                          className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                        >
+                          التالي
+                        </PaginationNext>
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       </main>
