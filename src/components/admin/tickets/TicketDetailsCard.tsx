@@ -34,7 +34,21 @@ const TicketDetailsCard = ({
       <CardContent className="space-y-4">
         <div className="flex justify-between items-center mb-4">
           <div className="flex items-center space-x-2">
-            <span className="text-sm text-gray-500 dark:text-gray-300">تاريخ الإنشاء: {new Date(ticket.created_at).toLocaleDateString('en-US')}</span>
+            <span className="text-sm text-gray-500 dark:text-gray-300">
+              تاريخ الإنشاء: {new Date(ticket.created_at).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                timeZone: 'Asia/Riyadh'
+              })}
+              {' '}
+              {new Date(ticket.created_at).toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true,
+                timeZone: 'Asia/Riyadh'
+              })}
+            </span>
           </div>
           <div className="flex items-center space-x-4 rtl:space-x-reverse">
             <TicketStatusSelector
