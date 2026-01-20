@@ -264,16 +264,17 @@ const AdminDashboard = () => {
                               </Badge>
                             </TableCell>
                             <TableCell className="text-right py-4 dark:text-gray-200">
-                              {new Date(ticket.created_at).toLocaleDateString('ar-SA', {
+                              {new Date(ticket.created_at).toLocaleDateString('en-US', {
                                 year: 'numeric',
-                                month: 'numeric',
-                                day: 'numeric',
+                                month: '2-digit',
+                                day: '2-digit',
                                 timeZone: 'Asia/Riyadh'
                               })}
                               {' '}
-                              {new Date(ticket.created_at).toLocaleTimeString('ar-SA', {
+                              {new Date(ticket.created_at).toLocaleTimeString('en-US', {
                                 hour: '2-digit',
                                 minute: '2-digit',
+                                hour12: true,
                                 timeZone: 'Asia/Riyadh'
                               })}
                             </TableCell>
